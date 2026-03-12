@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "土狗气象台",
+  "version": "0.1.0",
+  "description": "可拖动的实时监控悬浮窗，接入土狗气象台消息流、关键词种子和声音提醒。",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://tugoumeme.fun/*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.png", "icon-16.png", "icon-48.png", "icon-128.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "土狗气象台",
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://gmgn.ai/*",
+        "https://www.gmgn.ai/*",
+        "https://axiom.trade/*",
+        "https://www.axiom.trade/*",
+        "https://debot.ai/*",
+        "https://www.debot.ai/*",
+        "https://web3.binance.com/zh-CN/about*"
+      ],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
