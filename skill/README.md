@@ -88,4 +88,4 @@ skills/
 
 ## License
 
-发布到 ClawHub 的 skill 默认遵循平台要求的 MIT-0 发布规则。实际使用时请以 ClawHub 页面展示的 license 信息为准。
+MIT
