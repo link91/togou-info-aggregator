@@ -36,7 +36,11 @@
         "https://www.axiom.trade/*",
         "https://debot.ai/*",
         "https://www.debot.ai/*",
-        "https://web3.binance.com/zh-CN/about*"
+        "https://web3.binance.com/zh-CN/about*",
+        "https://xxyy.io/*",
+        "https://www.xxyy.io/*",
+        "https://6551.io/*",
+        "https://www.6551.io/*"
       ],
       "js": ["content-script.js"],
       "run_at": "document_idle"

@@ -110,6 +110,18 @@
         cardBorder: "rgba(255, 208, 101, 0.22)",
         cardGlow: "rgba(255, 195, 69, 0.08)"
       }
+    },
+    {
+      match: /X推文监控|推特监控|twitter/i,
+      vars: {
+        bg: "rgba(120, 170, 255, 0.14)",
+        border: "rgba(100, 160, 255, 0.34)",
+        text: "#d0e4ff",
+        countBg: "rgba(100, 160, 255, 0.22)",
+        countText: "#e8f2ff",
+        cardBorder: "rgba(100, 160, 255, 0.24)",
+        cardGlow: "rgba(80, 140, 255, 0.08)"
+      }
     }
   ];
   const DEFAULT_SOURCE_THEME = {
@@ -128,7 +140,8 @@
     { match: /微博监控/, icon: "📣" },
     { match: /公众号监控/, icon: "🟢" },
     { match: /全网热榜/, icon: "🔥" },
-    { match: /币安广场监控/, icon: "🟡" }
+    { match: /币安广场监控/, icon: "🟡" },
+    { match: /X推文监控|推特监控|twitter/i, icon: "𝕏" }
   ];
 
   const state = {
@@ -175,7 +188,8 @@
       display: flex;
       flex-direction: column;
       width: 420px;
-      height: 680px;
+      max-height: 90vh;
+      height: auto;
       border-radius: 18px;
       overflow: hidden;
       background:
@@ -394,17 +408,6 @@
       font-size: 11px;
     }
 
-    .tugou-settings {
-      display: none;
-      padding: 0 16px 14px;
-      border-top: 1px solid rgba(103, 189, 133, 0.16);
-      background: linear-gradient(180deg, rgba(10, 17, 23, 0.82), rgba(8, 12, 18, 0.72));
-    }
-
-    .tugou-settings.is-open {
-      display: block;
-    }
-
     .tugou-controls {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -600,7 +603,7 @@
 
     .tugou-list {
       flex: 1;
-      min-height: 0;
+      min-height: 400px;
       padding: 14px 16px 16px;
       overflow: auto;
       display: flex;
@@ -671,7 +674,7 @@
     }
 
     .tugou-card-title {
-      font-size: 13px;
+      font-size: var(--tugou-font-size, 13px);
       line-height: 1.5;
       color: #f1f7ef;
       font-weight: 700;
@@ -680,14 +683,14 @@
 
     .tugou-card-summary {
       margin-top: 8px;
-      font-size: 12px;
+      font-size: calc(var(--tugou-font-size, 13px) - 1px);
       line-height: 1.6;
       color: rgba(214, 232, 219, 0.76);
     }
 
     .tugou-card-content {
       margin-top: 10px;
-      font-size: 13px;
+      font-size: var(--tugou-font-size, 13px);
       line-height: 1.72;
       color: rgba(241, 247, 239, 0.92);
       white-space: pre-wrap;
@@ -844,6 +847,351 @@
     .tugou-resizer:hover {
       opacity: 1;
     }
+
+    /* ===== Settings panel overlay (slide from right) ===== */
+    .tugou-settings {
+      position: absolute;
+      top: 56px;
+      right: 0;
+      bottom: 0;
+      width: 280px;
+      max-width: 85%;
+      z-index: 20;
+      padding: 0 14px 14px;
+      overflow-y: auto;
+      background: linear-gradient(180deg, rgba(10, 17, 23, 0.97), rgba(8, 12, 18, 0.96));
+      border-left: 1px solid rgba(103, 189, 133, 0.18);
+      backdrop-filter: blur(14px);
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      pointer-events: none;
+    }
+    .tugou-settings.is-open {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .tugou-settings-close {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #d0e6d8;
+      border-bottom: 1px solid rgba(103, 189, 133, 0.12);
+      margin-bottom: 8px;
+    }
+    .tugou-settings-close button {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.5);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .tugou-settings-close button:hover {
+      color: #fff;
+    }
+    .tugou-settings-backdrop {
+      display: none;
+      position: absolute;
+      top: 56px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 19;
+      background: rgba(0,0,0,0.2);
+    }
+    .tugou-settings-backdrop.is-open {
+      display: block;
+    }
+
+    /* ===== Font size section ===== */
+    .tugou-fontsize-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 0;
+    }
+    .tugou-fontsize-slider {
+      flex: 1;
+      accent-color: #67bd85;
+      height: 4px;
+      cursor: pointer;
+    }
+    .tugou-fontsize-label {
+      font-size: 12px;
+      color: rgba(231, 240, 232, 0.7);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* ===== X Tweet Card ===== */
+    .tugou-x-card {
+      padding: 0 !important;
+      overflow: visible;
+    }
+    .tugou-x-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: rgba(231, 240, 232, 0.6);
+      flex-wrap: wrap;
+    }
+    .tugou-x-time {
+      color: rgba(231, 240, 232, 0.5);
+    }
+    .tugou-x-type {
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .tugou-x-type-tweet { background: rgba(255,255,255,0.08); color: rgba(231,240,232,0.6); }
+    .tugou-x-type-reply { background: rgba(56,163,255,0.18); color: #8ac4ff; }
+    .tugou-x-type-quote { background: rgba(168,85,247,0.18); color: #c9a0ff; }
+    .tugou-x-type-repost { background: rgba(34,197,94,0.18); color: #86efac; }
+    .tugou-x-type-ca_alert { background: rgba(251,146,60,0.22); color: #fdba74; }
+    .tugou-x-origin {
+      margin-left: auto;
+      color: rgba(100,160,255,0.8);
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .tugou-x-origin:hover { color: #8ac4ff; }
+    .tugou-x-new {
+      position: static !important;
+      margin-left: 6px;
+    }
+    .tugou-x-body {
+      padding: 0 12px 10px;
+    }
+    .tugou-x-author {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .tugou-x-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid rgba(100,160,255,0.25);
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .tugou-x-author-info {
+      min-width: 0;
+      flex: 1;
+    }
+    .tugou-x-name {
+      font-weight: 700;
+      font-size: var(--tugou-font-size, 13px);
+      color: #e7f0e8;
+      margin-right: 6px;
+    }
+    .tugou-x-handle {
+      font-size: calc(var(--tugou-font-size, 13px) - 1px);
+      color: rgba(231,240,232,0.5);
+    }
+    .tugou-x-bio {
+      font-size: 11px;
+      color: rgba(231,240,232,0.4);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .tugou-x-text {
+      font-size: var(--tugou-font-size, 13px);
+      line-height: 1.5;
+      color: rgba(231,240,232,0.92);
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 8px;
+    }
+    .tugou-x-text a {
+      color: rgba(100,160,255,0.85);
+      text-decoration: none;
+    }
+    .tugou-x-text a:hover { text-decoration: underline; }
+    .tugou-x-reply {
+      background: rgba(255,255,255,0.04);
+      border-left: 2px solid rgba(100,160,255,0.3);
+      border-radius: 4px;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+    }
+    .tugou-x-reply-label {
+      font-size: 10px;
+      color: rgba(231,240,232,0.4);
+      margin-bottom: 3px;
+    }
+    .tugou-x-reply-text {
+      font-size: 12px;
+      color: rgba(231,240,232,0.65);
+      line-height: 1.4;
+    }
+    .tugou-x-ca {
+      display: inline-block;
+      background: rgba(251,146,60,0.15);
+      border: 1px solid rgba(251,146,60,0.3);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 11px;
+      color: #fdba74;
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+    .tugou-x-ca:hover { background: rgba(251,146,60,0.25); }
+    .tugou-x-metrics {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .tugou-x-metrics span {
+      font-size: 11px;
+      color: rgba(231,240,232,0.5);
+      background: rgba(255,255,255,0.06);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .tugou-x-quoted {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 6px;
+    }
+    .tugou-x-quoted-head {
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(231,240,232,0.7);
+      margin-bottom: 4px;
+    }
+    .tugou-x-media {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .tugou-x-media img {
+      width: 100%;
+      border-radius: 6px;
+      max-height: 160px;
+      object-fit: cover;
+      cursor: zoom-in;
+    }
+    .tugou-x-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: rgba(2, 6, 23, 0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+      padding: 20px;
+      animation: tugou-lb-fade 0.2s ease;
+    }
+    @keyframes tugou-lb-fade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .tugou-x-lightbox img {
+      max-width: 92vw;
+      max-height: 92vh;
+      border-radius: 12px;
+      object-fit: contain;
+      animation: tugou-lb-scale 0.2s ease;
+    }
+    @keyframes tugou-lb-scale {
+      from { transform: scale(0.92); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .tugou-x-summary {
+      font-size: calc(var(--tugou-font-size, 13px) - 2px);
+      color: rgba(231,240,232,0.5);
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+      font-style: italic;
+    }
+
+    /* ===== X Follow Event Card ===== */
+    .tugou-x-follow-shell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+    .tugou-x-follow-node {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .tugou-x-follow-node .tugou-x-avatar {
+      flex-shrink: 0;
+    }
+    .tugou-x-follow-arrow {
+      font-size: 20px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .tugou-x-follow-arrow.follow { color: #4ade80; }
+    .tugou-x-follow-arrow.unfollow { color: #f87171; }
+    .tugou-x-type-follow { background: rgba(74,222,128,0.18); color: #4ade80; }
+    .tugou-x-type-unfollow { background: rgba(248,113,113,0.18); color: #f87171; }
+
+    /* ===== X Profile Change Card ===== */
+    .tugou-x-profile-title {
+      font-size: var(--tugou-font-size, 13px);
+      font-weight: 700;
+      color: #e7f0e8;
+      margin-bottom: 8px;
+    }
+    .tugou-x-profile-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: calc(var(--tugou-font-size, 13px) - 1px);
+      color: rgba(231,240,232,0.8);
+    }
+    .tugou-x-profile-field {
+      font-weight: 600;
+      color: rgba(231,240,232,0.5);
+      min-width: 40px;
+    }
+    .tugou-x-profile-old {
+      text-decoration: line-through;
+      color: rgba(248,113,113,0.7);
+    }
+    .tugou-x-profile-arrow {
+      color: rgba(231,240,232,0.3);
+    }
+    .tugou-x-profile-new {
+      color: #4ade80;
+    }
+    .tugou-x-profile-avatar-change {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tugou-x-profile-avatar-change img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .tugou-x-type-profile { background: rgba(168,130,255,0.18); color: #a882ff; }
   `;
 
   init().catch((error) => {
@@ -855,6 +1203,7 @@
     createUi();
     bindStaticEvents();
     updatePanelPosition();
+    applyFontSize();
     renderAll();
 
     await bootstrapData();
@@ -874,7 +1223,8 @@
       soundProfile: "chime",
       aiOnly: false,
       keywords: [],
-      sourceStates: {}
+      sourceStates: {},
+      fontSize: 13
     };
   }
 
@@ -898,6 +1248,7 @@
     merged.soundEnabled = merged.soundEnabled !== false;
     merged.soundProfile = SOUND_PRESETS[merged.soundProfile] ? merged.soundProfile : "chime";
     merged.aiOnly = Boolean(merged.aiOnly);
+    merged.fontSize = clamp(Number(merged.fontSize) || 13, 10, 20);
 
     return merged;
   }
@@ -1110,8 +1461,55 @@
     resizeHandle.className = "tugou-resizer";
     resizeHandle.title = "拖动调整窗口大小";
 
-    settingsPanel.append(soundSection, sourceSection, keywordSection);
-    panel.append(header, statusRow, actionRow, settingsPanel, list, footer, resizeHandle);
+    // Font size section
+    const fontSection = document.createElement("div");
+    fontSection.className = "tugou-section";
+    const fontHead = document.createElement("div");
+    fontHead.className = "tugou-section-head";
+    const fontTitle = document.createElement("div");
+    fontTitle.className = "tugou-section-title";
+    fontTitle.textContent = "字体大小";
+    const fontLabel = document.createElement("div");
+    fontLabel.className = "tugou-fontsize-label";
+    fontLabel.textContent = `${state.settings.fontSize}px`;
+    fontHead.append(fontTitle, fontLabel);
+    const fontRow = document.createElement("div");
+    fontRow.className = "tugou-fontsize-row";
+    const fontSlider = document.createElement("input");
+    fontSlider.type = "range";
+    fontSlider.className = "tugou-fontsize-slider";
+    fontSlider.min = "10";
+    fontSlider.max = "20";
+    fontSlider.step = "1";
+    fontSlider.value = String(state.settings.fontSize);
+    fontSlider.addEventListener("input", () => {
+      const val = Number(fontSlider.value);
+      state.settings.fontSize = val;
+      fontLabel.textContent = `${val}px`;
+      applyFontSize();
+      saveSettings();
+    });
+    fontRow.appendChild(fontSlider);
+    fontSection.append(fontHead, fontRow);
+
+    settingsPanel.append(soundSection, sourceSection, keywordSection, fontSection);
+
+    // Settings close header
+    const settingsCloseBar = document.createElement("div");
+    settingsCloseBar.className = "tugou-settings-close";
+    const settingsCloseLabel = document.createElement("span");
+    settingsCloseLabel.textContent = "设置";
+    const settingsCloseBtn = document.createElement("button");
+    settingsCloseBtn.textContent = "✕";
+    settingsCloseBtn.title = "关闭设置";
+    settingsCloseBar.append(settingsCloseLabel, settingsCloseBtn);
+    settingsPanel.insertBefore(settingsCloseBar, settingsPanel.firstChild);
+
+    // Settings backdrop (click outside to close)
+    const settingsBackdrop = document.createElement("div");
+    settingsBackdrop.className = "tugou-settings-backdrop";
+
+    panel.append(header, statusRow, actionRow, settingsBackdrop, settingsPanel, list, footer, resizeHandle);
     root.append(panel, bubble);
     shadow.append(style, root);
 
@@ -1126,6 +1524,8 @@
     refs.settingsBtn = settingsBtn;
     refs.minimizeBtn = minimizeBtn;
     refs.settingsPanel = settingsPanel;
+    refs.settingsBackdrop = settingsBackdrop;
+    refs.settingsCloseBtn = settingsCloseBtn;
     refs.statusDot = statusDot;
     refs.statusText = statusText;
     refs.onlinePill = onlinePill;
@@ -1169,6 +1569,20 @@
 
     refs.settingsBtn.addEventListener("click", async () => {
       state.settings.settingsOpen = !state.settings.settingsOpen;
+      await saveSettings();
+      renderSettings();
+    });
+
+    // Close settings via close button
+    refs.settingsCloseBtn.addEventListener("click", async () => {
+      state.settings.settingsOpen = false;
+      await saveSettings();
+      renderSettings();
+    });
+
+    // Close settings via backdrop click
+    refs.settingsBackdrop.addEventListener("click", async () => {
+      state.settings.settingsOpen = false;
       await saveSettings();
       renderSettings();
     });
@@ -1523,7 +1937,9 @@
       link_url: item.link_url || "",
       media_url: normalizeMediaUrl(item.media_url),
       created_at: item.created_at || new Date().toISOString(),
-      created_at_ms: parseApiDate(item.created_at || Date.now()).getTime()
+      created_at_ms: parseApiDate(item.created_at || Date.now()).getTime(),
+      message_kind: item.message_kind || null,
+      metadata: item.metadata || null
     };
   }
 
@@ -1726,6 +2142,8 @@
     if ("ai_confidence" in update) target.ai_confidence = typeof update.ai_confidence === "number" ? update.ai_confidence : null;
     if ("link_url" in update) target.link_url = update.link_url || "";
     if ("media_url" in update) target.media_url = normalizeMediaUrl(update.media_url);
+    if ("message_kind" in update) target.message_kind = update.message_kind || null;
+    if ("metadata" in update) target.metadata = update.metadata || null;
 
     renderMessages();
   }
@@ -1868,6 +2286,9 @@
   function renderSettings() {
     refs.settingsPanel.classList.toggle("is-open", state.settings.settingsOpen);
     refs.settingsBtn.classList.toggle("active", state.settings.settingsOpen);
+    if (refs.settingsBackdrop) {
+      refs.settingsBackdrop.classList.toggle("is-open", state.settings.settingsOpen);
+    }
   }
 
   function renderSources() {
@@ -1945,6 +2366,14 @@
   }
 
   function createMessageCard(message) {
+    // X 推文消息使用专属卡片
+    if (message.message_kind && message.message_kind.startsWith("x_") && message.metadata) {
+      const kind = message.metadata.kind;
+      if (kind === "x_follow_event") return createXFollowCard(message);
+      if (kind === "x_profile_change") return createXProfileChangeCard(message);
+      return createXTweetCard(message);
+    }
+
     const card = document.createElement("article");
     card.className = "tugou-card";
     applySourceTheme(card, message.group_name);
@@ -2069,6 +2498,537 @@
     actions.append(tags, buttons);
 
     card.append(head, actions);
+    return card;
+  }
+
+  function createXTweetCard(message) {
+    const meta = message.metadata;
+    const user = meta.user || {};
+    const handle = user.screen_name || "";
+    const displayName = user.name || handle || "Unknown";
+    const tweetType = meta.tweet_type || "tweet";
+    // extractCleanContent 提取 "推文内容:" 部分（引用推文时是发推人的评论），
+    // meta.text 对于引用推文类型包含的是被引用内容，不是发推人的正文，所以优先用 extractCleanContent。
+    const tweetText = (message.content ? extractCleanContent(message.content) : null) || meta.text || "";
+    const tweetUrl = meta.tweet_url || message.link_url || "";
+    const avatarUrl = user.avatar
+      || (handle ? `https://unavatar.io/twitter/${handle}` : "")
+      || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=f8fafc&size=40`;
+
+    const TYPE_LABELS = { reply: "回复", quote: "引用", repost: "转推", tweet: "推文", ca_alert: "CA" };
+
+    const card = document.createElement("article");
+    card.className = "tugou-card tugou-x-card";
+    applySourceTheme(card, message.group_name);
+    card.classList.toggle("is-hit", message.keywordHits.length > 0);
+
+    // Header: time + type badge + group
+    const header = document.createElement("div");
+    header.className = "tugou-x-header";
+    const timeSpan = document.createElement("span");
+    timeSpan.className = "tugou-x-time";
+    timeSpan.textContent = formatTime(message.created_at_ms);
+    const typeBadge = document.createElement("span");
+    typeBadge.className = `tugou-x-type tugou-x-type-${tweetType}`;
+    typeBadge.textContent = TYPE_LABELS[tweetType] || tweetType;
+    const groupBadge = document.createElement("span");
+    groupBadge.className = "tugou-group-badge";
+    applySourceTheme(groupBadge, message.group_name);
+    groupBadge.innerHTML = `<span class="tugou-source-icon">${getSourceIcon(message.group_name)}</span><span>${message.group_name}</span>`;
+    header.append(timeSpan, typeBadge, groupBadge);
+    if (tweetUrl) {
+      const originLink = document.createElement("a");
+      originLink.className = "tugou-x-origin";
+      originLink.textContent = "原文";
+      originLink.addEventListener("click", (e) => { e.stopPropagation(); openExternal(tweetUrl); });
+      header.appendChild(originLink);
+    }
+
+    // Card body
+    const body = document.createElement("div");
+    body.className = "tugou-x-body";
+
+    // Author row
+    const authorRow = document.createElement("div");
+    authorRow.className = "tugou-x-author";
+    const avatar = document.createElement("img");
+    avatar.className = "tugou-x-avatar";
+    avatar.src = avatarUrl;
+    avatar.alt = displayName;
+    avatar.loading = "lazy";
+    avatar.addEventListener("error", () => {
+      if (!avatar.src.includes("unavatar.io") && !avatar.src.includes("ui-avatars.com") && handle) {
+        avatar.src = `https://unavatar.io/twitter/${handle}`;
+      } else if (!avatar.src.includes("ui-avatars.com")) {
+        avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=f8fafc&size=40`;
+      }
+    });
+    const authorInfo = document.createElement("div");
+    authorInfo.className = "tugou-x-author-info";
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "tugou-x-name";
+    nameSpan.textContent = displayName;
+    const handleSpan = document.createElement("span");
+    handleSpan.className = "tugou-x-handle";
+    handleSpan.textContent = handle ? `@${handle}` : "";
+    authorInfo.append(nameSpan, handleSpan);
+    if (user.note || user.bio) {
+      const bio = document.createElement("div");
+      bio.className = "tugou-x-bio";
+      bio.textContent = user.note || user.bio;
+      authorInfo.appendChild(bio);
+    }
+    authorRow.append(avatar, authorInfo);
+    body.appendChild(authorRow);
+
+    // Reply context
+    if (meta.reply_to && (meta.reply_to.text || meta.reply_to.user?.screen_name)) {
+      const replyBlock = document.createElement("div");
+      replyBlock.className = "tugou-x-reply";
+      const replyLabel = document.createElement("div");
+      replyLabel.className = "tugou-x-reply-label";
+      replyLabel.textContent = "回复上下文";
+      const replyUser = meta.reply_to.user || {};
+
+      // Reply author row with avatar
+      const replyAuthor = document.createElement("div");
+      replyAuthor.style.cssText = "display:flex;align-items:center;gap:6px;margin-bottom:4px;";
+      const rAvatarUrl = replyUser.avatar
+        || (replyUser.screen_name ? `https://unavatar.io/twitter/${replyUser.screen_name}` : "")
+        || `https://ui-avatars.com/api/?name=${encodeURIComponent(replyUser.name || "?")}&background=0f172a&color=f8fafc&size=28`;
+      if (rAvatarUrl) {
+        const rAvatar = document.createElement("img");
+        rAvatar.src = rAvatarUrl;
+        rAvatar.style.cssText = "width:20px;height:20px;border-radius:50%;flex-shrink:0;";
+        rAvatar.loading = "lazy";
+        rAvatar.addEventListener("error", () => {
+          if (!rAvatar.src.includes("unavatar.io") && !rAvatar.src.includes("ui-avatars.com") && replyUser.screen_name) {
+            rAvatar.src = `https://unavatar.io/twitter/${replyUser.screen_name}`;
+          } else if (!rAvatar.src.includes("ui-avatars.com")) {
+            rAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(replyUser.name || "?")}&background=0f172a&color=f8fafc&size=28`;
+          }
+        });
+        replyAuthor.appendChild(rAvatar);
+      }
+      const rNameSpan = document.createElement("span");
+      rNameSpan.style.cssText = "font-size:11px;color:rgba(231,240,232,0.7);font-weight:600;";
+      rNameSpan.textContent = `${replyUser.name || replyUser.screen_name || ""}${replyUser.screen_name ? " @" + replyUser.screen_name : ""}`;
+      replyAuthor.appendChild(rNameSpan);
+      replyBlock.append(replyLabel, replyAuthor);
+
+      if (meta.reply_to.text) {
+        const replyText = document.createElement("div");
+        replyText.className = "tugou-x-reply-text";
+        appendRichText(replyText, meta.reply_to.text, message.keywordHits);
+        replyBlock.appendChild(replyText);
+      }
+      // Reply media
+      if (meta.reply_to.media && meta.reply_to.media.length > 0) {
+        const rMedia = document.createElement("div");
+        rMedia.className = "tugou-x-media";
+        rMedia.style.marginTop = "6px";
+        for (const item of meta.reply_to.media.slice(0, 4)) {
+          const img = document.createElement("img");
+          img.src = item.url || item;
+          img.loading = "lazy";
+          img.addEventListener("error", () => img.remove());
+          rMedia.appendChild(img);
+        }
+        replyBlock.appendChild(rMedia);
+        attachLightboxToMedia(rMedia);
+      }
+      body.appendChild(replyBlock);
+    }
+
+    // Tweet text
+    if (tweetText) {
+      const textDiv = document.createElement("div");
+      textDiv.className = "tugou-x-text";
+      appendRichText(textDiv, tweetText, message.keywordHits);
+      body.appendChild(textDiv);
+    }
+
+    // CA badge
+    if (meta.ca_address) {
+      const caBadge = document.createElement("div");
+      caBadge.className = "tugou-x-ca";
+      caBadge.textContent = `CA: ${meta.ca_address.slice(0, 8)}...${meta.ca_address.slice(-6)}`;
+      caBadge.addEventListener("click", () => {
+        navigator.clipboard.writeText(meta.ca_address).catch(() => {});
+        openExternal(`https://dexscreener.com/solana/${meta.ca_address}`);
+      });
+      body.appendChild(caBadge);
+    }
+
+    // Metrics
+    if (meta.metrics) {
+      const metrics = document.createElement("div");
+      metrics.className = "tugou-x-metrics";
+      const m = meta.metrics;
+      if (m.retweets != null) metrics.innerHTML += `<span>转推 ${formatCount(m.retweets)}</span>`;
+      if (m.likes != null) metrics.innerHTML += `<span>点赞 ${formatCount(m.likes)}</span>`;
+      if (m.replies != null) metrics.innerHTML += `<span>回复 ${formatCount(m.replies)}</span>`;
+      body.appendChild(metrics);
+    }
+
+    // Quoted tweet — enrichment 前 quoted_tweet 为 null，用 meta.text 做兜底（对 quote 类型，meta.text 就是被引用内容）
+    let quoted = meta.quoted_tweet || meta.retweeted_tweet || null;
+    if (!quoted && tweetType === "quote" && meta.text) {
+      quoted = { user: {}, text: meta.text, media: [] };
+    }
+    if (quoted && (quoted.text || (quoted.media && quoted.media.length))) {
+      const qBlock = document.createElement("div");
+      qBlock.className = "tugou-x-quoted";
+      const qLabel = document.createElement("div");
+      qLabel.className = "tugou-x-reply-label";
+      qLabel.textContent = (meta.quoted_tweet || tweetType === "quote") ? "引用推文" : "转推内容";
+      const qUser = quoted.user || {};
+      const qHead = document.createElement("div");
+      qHead.className = "tugou-x-quoted-head";
+
+      // Quoted tweet author avatar + name
+      const qAvatarUrl = qUser.avatar
+        || (qUser.screen_name ? `https://unavatar.io/twitter/${qUser.screen_name}` : "")
+        || `https://ui-avatars.com/api/?name=${encodeURIComponent(qUser.name || "?")}&background=0f172a&color=f8fafc&size=28`;
+      if (qAvatarUrl) {
+        const qAvatar = document.createElement("img");
+        qAvatar.src = qAvatarUrl;
+        qAvatar.style.cssText = "width:20px;height:20px;border-radius:50%;margin-right:6px;vertical-align:middle;";
+        qAvatar.loading = "lazy";
+        qAvatar.addEventListener("error", () => {
+          if (!qAvatar.src.includes("unavatar.io") && !qAvatar.src.includes("ui-avatars.com") && qUser.screen_name) {
+            qAvatar.src = `https://unavatar.io/twitter/${qUser.screen_name}`;
+          } else if (!qAvatar.src.includes("ui-avatars.com")) {
+            qAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(qUser.name || "?")}&background=0f172a&color=f8fafc&size=28`;
+          }
+        });
+        qHead.appendChild(qAvatar);
+      }
+      const qNameSpan = document.createElement("span");
+      qNameSpan.textContent = `${qUser.name || ""} @${qUser.screen_name || ""}`;
+      qHead.appendChild(qNameSpan);
+
+      qBlock.append(qLabel, qHead);
+      if (quoted.text) {
+        const qText = document.createElement("div");
+        qText.className = "tugou-x-reply-text";
+        appendRichText(qText, quoted.text, message.keywordHits);
+        qBlock.appendChild(qText);
+      }
+      // Quoted tweet media
+      if (quoted.media && quoted.media.length > 0) {
+        const qMedia = document.createElement("div");
+        qMedia.className = "tugou-x-media";
+        qMedia.style.marginTop = "6px";
+        for (const item of quoted.media.slice(0, 4)) {
+          const img = document.createElement("img");
+          img.src = item.url || item;
+          img.loading = "lazy";
+          img.addEventListener("error", () => img.remove());
+          qMedia.appendChild(img);
+        }
+        qBlock.appendChild(qMedia);
+        attachLightboxToMedia(qMedia);
+      }
+      body.appendChild(qBlock);
+    }
+
+    // Media
+    if (meta.media && meta.media.length > 0) {
+      const mediaGrid = document.createElement("div");
+      mediaGrid.className = "tugou-x-media";
+      for (const item of meta.media.slice(0, 4)) {
+        const img = document.createElement("img");
+        img.src = item.url || item;
+        img.loading = "lazy";
+        img.addEventListener("error", () => img.remove());
+        mediaGrid.appendChild(img);
+      }
+      body.appendChild(mediaGrid);
+      attachLightboxToMedia(mediaGrid);
+    }
+
+    // AI summary
+    if (message.ai_summary) {
+      const summary = document.createElement("div");
+      summary.className = "tugou-x-summary";
+      summary.textContent = message.ai_summary;
+      body.appendChild(summary);
+    }
+
+    // NEW badge
+    if (message.is_new) {
+      const badge = document.createElement("span");
+      badge.className = "tugou-new tugou-x-new";
+      badge.textContent = "NEW";
+      header.appendChild(badge);
+    }
+
+    card.append(header, body);
+    return card;
+  }
+
+  function formatCount(n) {
+    if (n == null) return "";
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+    if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+    return String(n);
+  }
+
+  function openLightbox(src) {
+    // Close any existing lightbox
+    const existing = shadow.querySelector(".tugou-x-lightbox");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.className = "tugou-x-lightbox";
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = "";
+    overlay.appendChild(img);
+    overlay.addEventListener("click", () => overlay.remove());
+    // ESC to close
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        overlay.remove();
+        document.removeEventListener("keydown", onKey);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    shadow.appendChild(overlay);
+  }
+
+  function attachLightboxToMedia(container) {
+    container.querySelectorAll("img").forEach((img) => {
+      img.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openLightbox(img.src);
+      });
+    });
+  }
+
+  /**
+   * 从原始 TG 消息内容中提取干净的推文正文。
+   * message.content 包含完整 TG 消息（含标题、标签等），
+   * 这里剥离已知的头部标签，提取 "推文内容:" 或 "引用内容:" 之后的正文。
+   */
+  function extractCleanContent(raw) {
+    if (!raw) return "";
+    // 尝试提取 "推文内容:" 之后的内容
+    const contentIdx = raw.indexOf("推文内容:");
+    const quoteIdx = raw.indexOf("引用内容:");
+    const replyIdx = raw.indexOf("回帖内容:");
+    if (contentIdx >= 0) {
+      // 如果同时有引用内容，取推文内容到引用内容之间
+      const end = quoteIdx > contentIdx ? quoteIdx : raw.length;
+      const text = raw.slice(contentIdx + "推文内容:".length, end).trim();
+      if (text) return text;
+    }
+    if (replyIdx >= 0) {
+      return raw.slice(replyIdx + "回帖内容:".length).trim();
+    }
+    if (quoteIdx >= 0) {
+      return raw.slice(quoteIdx + "引用内容:".length).trim();
+    }
+    // 兜底：去掉已知头部行，返回剩余内容
+    const lines = raw.split("\n").filter((line) => {
+      const t = line.trim();
+      if (!t) return false;
+      if (/^🌟监控到/.test(t)) return false;
+      if (/^📢/.test(t)) return false;
+      if (/^你关注的用户[:：]/.test(t)) return false;
+      if (/^用户所属分组[:：]/.test(t)) return false;
+      return true;
+    });
+    return lines.join("\n").trim();
+  }
+
+  function createXFollowCard(message) {
+    const meta = message.metadata;
+    const actor = meta.actor || {};
+    const target = meta.target || {};
+    const isFollow = meta.action === "follow";
+
+    const card = document.createElement("article");
+    card.className = "tugou-card tugou-x-card";
+    applySourceTheme(card, message.group_name);
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "tugou-x-header";
+    const timeSpan = document.createElement("span");
+    timeSpan.className = "tugou-x-time";
+    timeSpan.textContent = formatTime(message.created_at_ms);
+    const typeBadge = document.createElement("span");
+    typeBadge.className = `tugou-x-type ${isFollow ? "tugou-x-type-follow" : "tugou-x-type-unfollow"}`;
+    typeBadge.textContent = isFollow ? "关注" : "取关";
+    const groupBadge = document.createElement("span");
+    groupBadge.className = "tugou-group-badge";
+    applySourceTheme(groupBadge, message.group_name);
+    groupBadge.innerHTML = `<span class="tugou-source-icon">${getSourceIcon(message.group_name)}</span><span>${message.group_name}</span>`;
+    header.append(timeSpan, typeBadge, groupBadge);
+    if (message.is_new) {
+      const badge = document.createElement("span");
+      badge.className = "tugou-new tugou-x-new";
+      badge.textContent = "NEW";
+      header.appendChild(badge);
+    }
+
+    // Body: actor → target
+    const body = document.createElement("div");
+    body.className = "tugou-x-follow-shell";
+
+    function makeFollowNode(user) {
+      const node = document.createElement("div");
+      node.className = "tugou-x-follow-node";
+      const handle = user.screen_name || "";
+      const displayName = user.name || handle || "Unknown";
+      const avatarUrl = user.avatar
+        || (handle ? `https://unavatar.io/twitter/${handle}` : "")
+        || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=f8fafc&size=40`;
+      const avatar = document.createElement("img");
+      avatar.className = "tugou-x-avatar";
+      avatar.src = avatarUrl;
+      avatar.alt = displayName;
+      avatar.loading = "lazy";
+      avatar.addEventListener("error", () => {
+        if (!avatar.src.includes("unavatar.io") && !avatar.src.includes("ui-avatars.com") && handle) {
+          avatar.src = `https://unavatar.io/twitter/${handle}`;
+        } else if (!avatar.src.includes("ui-avatars.com")) {
+          avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=f8fafc&size=40`;
+        }
+      });
+      const info = document.createElement("div");
+      info.className = "tugou-x-author-info";
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "tugou-x-name";
+      nameSpan.textContent = displayName;
+      const handleSpan = document.createElement("span");
+      handleSpan.className = "tugou-x-handle";
+      handleSpan.textContent = handle ? `@${handle}` : "";
+      info.append(nameSpan, handleSpan);
+      if (user.bio) {
+        const bio = document.createElement("div");
+        bio.className = "tugou-x-bio";
+        bio.textContent = user.bio;
+        info.appendChild(bio);
+      }
+      node.append(avatar, info);
+      return node;
+    }
+
+    const arrow = document.createElement("div");
+    arrow.className = `tugou-x-follow-arrow ${isFollow ? "follow" : "unfollow"}`;
+    arrow.textContent = isFollow ? "→" : "↘";
+
+    body.append(makeFollowNode(actor), arrow, makeFollowNode(target));
+    card.append(header, body);
+    return card;
+  }
+
+  function createXProfileChangeCard(message) {
+    const meta = message.metadata;
+    const username = meta.username || "";
+    const changes = meta.changes || [];
+
+    const card = document.createElement("article");
+    card.className = "tugou-card tugou-x-card";
+    applySourceTheme(card, message.group_name);
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "tugou-x-header";
+    const timeSpan = document.createElement("span");
+    timeSpan.className = "tugou-x-time";
+    timeSpan.textContent = formatTime(message.created_at_ms);
+    const typeBadge = document.createElement("span");
+    typeBadge.className = "tugou-x-type tugou-x-type-profile";
+    typeBadge.textContent = "资料变更";
+    const groupBadge = document.createElement("span");
+    groupBadge.className = "tugou-group-badge";
+    applySourceTheme(groupBadge, message.group_name);
+    groupBadge.innerHTML = `<span class="tugou-source-icon">${getSourceIcon(message.group_name)}</span><span>${message.group_name}</span>`;
+    header.append(timeSpan, typeBadge, groupBadge);
+
+    if (username) {
+      const profileLink = document.createElement("a");
+      profileLink.className = "tugou-x-origin";
+      profileLink.textContent = `@${username}`;
+      profileLink.addEventListener("click", (e) => { e.stopPropagation(); openExternal(`https://x.com/${username}`); });
+      header.appendChild(profileLink);
+    }
+    if (message.is_new) {
+      const badge = document.createElement("span");
+      badge.className = "tugou-new tugou-x-new";
+      badge.textContent = "NEW";
+      header.appendChild(badge);
+    }
+
+    // Body
+    const body = document.createElement("div");
+    body.className = "tugou-x-body";
+
+    const title = document.createElement("div");
+    title.className = "tugou-x-profile-title";
+    title.textContent = `@${username}`;
+    body.appendChild(title);
+
+    for (const change of changes) {
+      const row = document.createElement("div");
+      row.className = "tugou-x-profile-row";
+
+      const fieldLabel = document.createElement("span");
+      fieldLabel.className = "tugou-x-profile-field";
+      fieldLabel.textContent = change.field === "name" ? "昵称" : "头像";
+      row.appendChild(fieldLabel);
+
+      if (change.field === "name") {
+        const oldSpan = document.createElement("span");
+        oldSpan.className = "tugou-x-profile-old";
+        oldSpan.textContent = change.old_value || "未知";
+        const arrowSpan = document.createElement("span");
+        arrowSpan.className = "tugou-x-profile-arrow";
+        arrowSpan.textContent = "→";
+        const newSpan = document.createElement("span");
+        newSpan.className = "tugou-x-profile-new";
+        newSpan.textContent = change.new_value || "未知";
+        row.append(oldSpan, arrowSpan, newSpan);
+      } else {
+        const avatarChange = document.createElement("div");
+        avatarChange.className = "tugou-x-profile-avatar-change";
+        if (change.old_value) {
+          const oldImg = document.createElement("img");
+          oldImg.src = change.old_value;
+          oldImg.alt = "旧头像";
+          oldImg.addEventListener("error", () => oldImg.remove());
+          avatarChange.appendChild(oldImg);
+        } else {
+          const placeholder = document.createElement("span");
+          placeholder.textContent = "旧头像";
+          avatarChange.appendChild(placeholder);
+        }
+        const arrowSpan = document.createElement("span");
+        arrowSpan.className = "tugou-x-profile-arrow";
+        arrowSpan.textContent = "→";
+        avatarChange.appendChild(arrowSpan);
+        if (change.new_value) {
+          const newImg = document.createElement("img");
+          newImg.src = change.new_value;
+          newImg.alt = "新头像";
+          newImg.addEventListener("error", () => newImg.remove());
+          avatarChange.appendChild(newImg);
+        } else {
+          const placeholder = document.createElement("span");
+          placeholder.textContent = "新头像";
+          avatarChange.appendChild(placeholder);
+        }
+        row.appendChild(avatarChange);
+      }
+
+      body.appendChild(row);
+    }
+
+    card.append(header, body);
     return card;
   }
 
@@ -2414,6 +3374,13 @@
       }
     }
     return "📡";
+  }
+
+  function applyFontSize() {
+    const size = state.settings.fontSize || 13;
+    if (refs.list) {
+      refs.list.style.setProperty("--tugou-font-size", size + "px");
+    }
   }
 
   function applySourceTheme(element, groupName) {
