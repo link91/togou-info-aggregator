@@ -154,6 +154,8 @@
     error: "",
     ws: null,
     reconnectTimer: null,
+    pollingTimer: null,
+    wsFailCount: 0,
     heartbeatTimer: null,
     lastPongAt: Date.now(),
     audioContext: null
@@ -1192,6 +1194,57 @@
       object-fit: cover;
     }
     .tugou-x-type-profile { background: rgba(168,130,255,0.18); color: #a882ff; }
+
+    /* Cloudflare 5s 盾提示条 */
+    .tugou-cf-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: linear-gradient(135deg, #ff6b35 0%, #f7c948 100%);
+      color: #1a1a2e;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px 8px 0 0;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .tugou-cf-banner span {
+      flex: 1;
+    }
+    .tugou-cf-btn {
+      padding: 4px 12px;
+      background: #1a1a2e;
+      color: #f7c948;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tugou-cf-btn:hover {
+      background: #2a2a4e;
+    }
+    .tugou-cf-retry {
+      background: #0d7c3e !important;
+      color: #fff !important;
+    }
+    .tugou-cf-retry:hover {
+      background: #0fa854 !important;
+    }
+    .tugou-cf-dismiss {
+      background: none;
+      border: none;
+      color: #1a1a2e;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      opacity: 0.7;
+    }
+    .tugou-cf-dismiss:hover {
+      opacity: 1;
+    }
   `;
 
   init().catch((error) => {
@@ -1823,9 +1876,15 @@
       ensureSourceStates();
       await refreshMessages(false);
       state.error = "";
+      hideCfChallengeBanner();
     } catch (error) {
       console.error("[土狗雷达] 初始数据加载失败", error);
-      state.error = "初始数据加载失败";
+      if (error.message === "CF_CHALLENGE") {
+        state.error = "请打开主站完成验证，并保持标签页打开";
+        showCfChallengeBanner();
+      } else {
+        state.error = `连接失败: ${error.message}`;
+      }
     }
 
     renderAll();
@@ -1860,25 +1919,86 @@
     return url.toString();
   }
 
+  /**
+   * 通过 background service worker 代理 fetch，绕过 CORS 和 CF 5s 盾
+   */
+  function bgFetch(url, options) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: "tugou:fetch", url, options },
+        (resp) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          if (!resp) {
+            reject(new Error("background fetch: no response"));
+            return;
+          }
+          resolve(resp);
+        }
+      );
+    });
+  }
+
   async function fetchJson(path, init) {
-    const response = await fetch(buildUrl(path), {
-      ...init,
-      cache: "no-store"
+    const url = buildUrl(path);
+    const resp = await bgFetch(url, {
+      method: init?.method || "GET",
+      headers: init?.headers,
+      body: init?.body,
     });
 
-    if (!response.ok) {
-      throw new Error(`请求失败: ${response.status}`);
+    // 网络层错误
+    if (resp.error) {
+      showCfChallengeBanner();
+      throw new Error(resp.error);
     }
 
-    return response.json();
+    const contentType = resp.contentType || "";
+
+    // 检测 Cloudflare 5s 盾 challenge 页面
+    if (
+      (resp.status === 403 || resp.status === 503) &&
+      !contentType.includes("application/json")
+    ) {
+      showCfChallengeBanner();
+      throw new Error("CF_CHALLENGE");
+    }
+
+    if (!resp.ok) {
+      throw new Error(`请求失败: ${resp.status}`);
+    }
+
+    // 防止 Cloudflare 返回 200 但内容是 HTML challenge
+    if (!contentType.includes("application/json")) {
+      if (resp.body && (resp.body.includes("cf-challenge") || resp.body.includes("challenge-platform") || resp.body.includes("Just a moment"))) {
+        showCfChallengeBanner();
+        throw new Error("CF_CHALLENGE");
+      }
+      // 尝试解析为 JSON（有些服务器不设 content-type）
+      try {
+        return JSON.parse(resp.body);
+      } catch {
+        throw new Error("响应非 JSON 格式");
+      }
+    }
+
+    // 5s 盾通过，清除提示
+    hideCfChallengeBanner();
+    try {
+      return JSON.parse(resp.body);
+    } catch {
+      throw new Error("响应非 JSON 格式");
+    }
   }
 
   async function markAsRead(messageId) {
     try {
-      await fetch(new URL(`/api/messages/${messageId}/read`, state.settings.apiBase).toString(), {
-        method: "POST",
-        mode: "cors"
-      });
+      await bgFetch(
+        new URL(`/api/messages/${messageId}/read`, state.settings.apiBase).toString(),
+        { method: "POST" }
+      );
     } catch (error) {
       console.warn("[土狗雷达] 标记已读失败", error);
     }
@@ -1886,10 +2006,10 @@
 
   async function markAllRead() {
     try {
-      await fetch(new URL("/api/messages/read-all", state.settings.apiBase).toString(), {
-        method: "POST",
-        mode: "cors"
-      });
+      await bgFetch(
+        new URL("/api/messages/read-all", state.settings.apiBase).toString(),
+        { method: "POST" }
+      );
       state.messages = state.messages.map((item) => ({ ...item, is_new: false }));
       if (Array.isArray(state.groups)) {
         state.groups = state.groups.map((group) => ({ ...group, unread_count: 0 }));
@@ -1977,6 +2097,77 @@
     return b.created_at_ms - a.created_at_ms;
   }
 
+  // ====== 头像代理 ======
+  function proxyAvatar(url) {
+    if (!url) return url;
+    if (url.includes("pbs.twimg.com") || url.includes("abs.twimg.com") || url.includes("unavatar.io")) {
+      return `${state.settings.apiBase}/api/avatar-proxy?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  }
+
+  // ====== Cloudflare 5s 盾检测与提示 ======
+  let cfBannerEl = null;
+  let cfCheckInFlight = false;
+  let cfRetryTimer = null;
+
+  function showCfChallengeBanner() {
+    if (cfBannerEl) return;
+    cfBannerEl = document.createElement("div");
+    cfBannerEl.className = "tugou-cf-banner";
+    cfBannerEl.innerHTML = `
+      <span>⚠️ 连接失败，服务器可能正在维护中</span>
+      <button class="tugou-cf-btn">打开主站</button>
+      <button class="tugou-cf-btn tugou-cf-retry">重新连接</button>
+      <button class="tugou-cf-dismiss">✕</button>
+    `;
+    cfBannerEl.querySelector(".tugou-cf-btn").addEventListener("click", () => {
+      window.open(state.settings.apiBase, "_blank");
+    });
+    cfBannerEl.querySelector(".tugou-cf-retry").addEventListener("click", () => {
+      hideCfChallengeBanner();
+      bootstrapData();
+      connectWebSocket();
+    });
+    cfBannerEl.querySelector(".tugou-cf-dismiss").addEventListener("click", () => {
+      hideCfChallengeBanner();
+    });
+    // 插入到面板 header 之后
+    const panel = refs.panel;
+    const header = refs.header;
+    if (panel && header && header.nextSibling) {
+      panel.insertBefore(cfBannerEl, header.nextSibling);
+    } else if (panel) {
+      panel.appendChild(cfBannerEl);
+    }
+  }
+
+  function hideCfChallengeBanner() {
+    if (cfBannerEl) {
+      cfBannerEl.remove();
+      cfBannerEl = null;
+    }
+  }
+
+  async function checkCfShieldOnWsFailure() {
+    if (cfCheckInFlight) return;
+    cfCheckInFlight = true;
+    try {
+      const url = new URL("/api/status", state.settings.apiBase);
+      url.searchParams.set("_ts", Date.now().toString());
+      const resp = await bgFetch(url.toString(), { method: "GET" });
+      const ct = resp.contentType || "";
+      if ((resp.status === 403 || resp.status === 503) && !ct.includes("application/json")) {
+        showCfChallengeBanner();
+      } else if (resp.ok && ct.includes("application/json")) {
+        hideCfChallengeBanner();
+      }
+    } catch {
+      // 网络错误，非 5s 盾问题
+    }
+    cfCheckInFlight = false;
+  }
+
   function connectWebSocket() {
     disconnectWebSocket();
 
@@ -2011,6 +2202,8 @@
         state.isConnected = false;
         stopHeartbeat();
         renderStatus();
+        // WS 连接失败时，检测是否是 5s 盾导致
+        checkCfShieldOnWsFailure();
         scheduleReconnect();
       };
 
@@ -2042,10 +2235,37 @@
 
   function scheduleReconnect() {
     if (state.reconnectTimer) return;
+    state.wsFailCount = (state.wsFailCount || 0) + 1;
+    // 连续失败 3 次后，启动 API 轮询回退
+    if (state.wsFailCount >= 3 && !state.pollingTimer) {
+      startPolling();
+    }
     state.reconnectTimer = setTimeout(() => {
       state.reconnectTimer = null;
       connectWebSocket();
     }, 5000);
+  }
+
+  function startPolling() {
+    if (state.pollingTimer) return;
+    console.log("[土狗雷达] WebSocket 不可用，启动 API 轮询");
+    state.pollingTimer = setInterval(async () => {
+      try {
+        await refreshMessages();
+        const status = await fetchJson("/api/status");
+        state.status = status;
+        renderStatus();
+      } catch (e) {
+        // 轮询失败，静默忽略
+      }
+    }, 5000);
+  }
+
+  function stopPolling() {
+    if (state.pollingTimer) {
+      clearInterval(state.pollingTimer);
+      state.pollingTimer = null;
+    }
   }
 
   function startHeartbeat() {
@@ -2511,8 +2731,8 @@
     // meta.text 对于引用推文类型包含的是被引用内容，不是发推人的正文，所以优先用 extractCleanContent。
     const tweetText = (message.content ? extractCleanContent(message.content) : null) || meta.text || "";
     const tweetUrl = meta.tweet_url || message.link_url || "";
-    const avatarUrl = user.avatar
-      || (handle ? `https://unavatar.io/twitter/${handle}` : "")
+    const avatarUrl = proxyAvatar(user.avatar
+      || (handle ? `https://unavatar.io/twitter/${handle}` : ""))
       || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=f8fafc&size=40`;
 
     const TYPE_LABELS = { reply: "回复", quote: "引用", repost: "转推", tweet: "推文", ca_alert: "CA" };
@@ -2557,8 +2777,8 @@
     avatar.alt = displayName;
     avatar.loading = "lazy";
     avatar.addEventListener("error", () => {
-      if (!avatar.src.includes("unavatar.io") && !avatar.src.includes("ui-avatars.com") && handle) {
-        avatar.src = `https://unavatar.io/twitter/${handle}`;
+      if (!avatar.src.includes("avatar-proxy") && !avatar.src.includes("ui-avatars.com") && handle) {
+        avatar.src = proxyAvatar(`https://unavatar.io/twitter/${handle}`);
       } else if (!avatar.src.includes("ui-avatars.com")) {
         avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=f8fafc&size=40`;
       }
@@ -2593,8 +2813,8 @@
       // Reply author row with avatar
       const replyAuthor = document.createElement("div");
       replyAuthor.style.cssText = "display:flex;align-items:center;gap:6px;margin-bottom:4px;";
-      const rAvatarUrl = replyUser.avatar
-        || (replyUser.screen_name ? `https://unavatar.io/twitter/${replyUser.screen_name}` : "")
+      const rAvatarUrl = proxyAvatar(replyUser.avatar
+        || (replyUser.screen_name ? `https://unavatar.io/twitter/${replyUser.screen_name}` : ""))
         || `https://ui-avatars.com/api/?name=${encodeURIComponent(replyUser.name || "?")}&background=0f172a&color=f8fafc&size=28`;
       if (rAvatarUrl) {
         const rAvatar = document.createElement("img");
@@ -2602,8 +2822,8 @@
         rAvatar.style.cssText = "width:20px;height:20px;border-radius:50%;flex-shrink:0;";
         rAvatar.loading = "lazy";
         rAvatar.addEventListener("error", () => {
-          if (!rAvatar.src.includes("unavatar.io") && !rAvatar.src.includes("ui-avatars.com") && replyUser.screen_name) {
-            rAvatar.src = `https://unavatar.io/twitter/${replyUser.screen_name}`;
+          if (!rAvatar.src.includes("avatar-proxy") && !rAvatar.src.includes("ui-avatars.com") && replyUser.screen_name) {
+            rAvatar.src = proxyAvatar(`https://unavatar.io/twitter/${replyUser.screen_name}`);
           } else if (!rAvatar.src.includes("ui-avatars.com")) {
             rAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(replyUser.name || "?")}&background=0f172a&color=f8fafc&size=28`;
           }
@@ -2687,8 +2907,8 @@
       qHead.className = "tugou-x-quoted-head";
 
       // Quoted tweet author avatar + name
-      const qAvatarUrl = qUser.avatar
-        || (qUser.screen_name ? `https://unavatar.io/twitter/${qUser.screen_name}` : "")
+      const qAvatarUrl = proxyAvatar(qUser.avatar
+        || (qUser.screen_name ? `https://unavatar.io/twitter/${qUser.screen_name}` : ""))
         || `https://ui-avatars.com/api/?name=${encodeURIComponent(qUser.name || "?")}&background=0f172a&color=f8fafc&size=28`;
       if (qAvatarUrl) {
         const qAvatar = document.createElement("img");
@@ -2696,8 +2916,8 @@
         qAvatar.style.cssText = "width:20px;height:20px;border-radius:50%;margin-right:6px;vertical-align:middle;";
         qAvatar.loading = "lazy";
         qAvatar.addEventListener("error", () => {
-          if (!qAvatar.src.includes("unavatar.io") && !qAvatar.src.includes("ui-avatars.com") && qUser.screen_name) {
-            qAvatar.src = `https://unavatar.io/twitter/${qUser.screen_name}`;
+          if (!qAvatar.src.includes("avatar-proxy") && !qAvatar.src.includes("ui-avatars.com") && qUser.screen_name) {
+            qAvatar.src = proxyAvatar(`https://unavatar.io/twitter/${qUser.screen_name}`);
           } else if (!qAvatar.src.includes("ui-avatars.com")) {
             qAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(qUser.name || "?")}&background=0f172a&color=f8fafc&size=28`;
           }
@@ -2883,8 +3103,8 @@
       node.className = "tugou-x-follow-node";
       const handle = user.screen_name || "";
       const displayName = user.name || handle || "Unknown";
-      const avatarUrl = user.avatar
-        || (handle ? `https://unavatar.io/twitter/${handle}` : "")
+      const avatarUrl = proxyAvatar(user.avatar
+        || (handle ? `https://unavatar.io/twitter/${handle}` : ""))
         || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=f8fafc&size=40`;
       const avatar = document.createElement("img");
       avatar.className = "tugou-x-avatar";
@@ -2892,8 +3112,8 @@
       avatar.alt = displayName;
       avatar.loading = "lazy";
       avatar.addEventListener("error", () => {
-        if (!avatar.src.includes("unavatar.io") && !avatar.src.includes("ui-avatars.com") && handle) {
-          avatar.src = `https://unavatar.io/twitter/${handle}`;
+        if (!avatar.src.includes("avatar-proxy") && !avatar.src.includes("ui-avatars.com") && handle) {
+          avatar.src = proxyAvatar(`https://unavatar.io/twitter/${handle}`);
         } else if (!avatar.src.includes("ui-avatars.com")) {
           avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=f8fafc&size=40`;
         }
