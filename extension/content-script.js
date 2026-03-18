@@ -2183,6 +2183,11 @@
       ws.onopen = () => {
         state.isConnected = true;
         state.lastPongAt = Date.now();
+        state.wsFailCount = 0;
+        if (state._disconnectTimer) {
+          clearTimeout(state._disconnectTimer);
+          state._disconnectTimer = null;
+        }
         syncSourceSubscriptions();
         sendWs({ action: "set_ai_filter", enabled: state.settings.aiOnly });
         startHeartbeat();
@@ -2201,7 +2206,11 @@
       ws.onclose = () => {
         state.isConnected = false;
         stopHeartbeat();
-        renderStatus();
+        // 延迟显示断开状态，避免短暂重连闪烁
+        if (state._disconnectTimer) clearTimeout(state._disconnectTimer);
+        state._disconnectTimer = setTimeout(() => {
+          if (!state.isConnected) renderStatus();
+        }, 2000);
         // WS 连接失败时，检测是否是 5s 盾导致
         checkCfShieldOnWsFailure();
         scheduleReconnect();
@@ -2209,7 +2218,6 @@
 
       ws.onerror = () => {
         state.isConnected = false;
-        renderStatus();
       };
     } catch (error) {
       console.warn("[土狗雷达] WebSocket 连接失败", error);
@@ -2567,7 +2575,21 @@
   }
 
   function renderMessages() {
-    const savedScrollTop = refs.list.scrollTop;
+    // 记住当前可见的第一条消息
+    const scrollTop = refs.list.scrollTop;
+    let anchorId = null;
+    let anchorOffset = 0;
+    if (scrollTop > 0) {
+      for (const child of refs.list.children) {
+        const id = child.dataset && child.dataset.msgId;
+        if (id) {
+          anchorId = id;
+          anchorOffset = child.getBoundingClientRect().top - refs.list.getBoundingClientRect().top;
+          break;
+        }
+      }
+    }
+
     refs.list.textContent = "";
     const visibleMessages = getVisibleMessages();
 
@@ -2583,7 +2605,18 @@
       fragment.appendChild(createMessageCard(message));
     }
     refs.list.appendChild(fragment);
-    refs.list.scrollTop = savedScrollTop;
+
+    // 恢复滚动位置：找到之前可见的消息，滚到相同偏移
+    if (anchorId) {
+      const anchorEl = refs.list.querySelector(`[data-msg-id="${anchorId}"]`);
+      if (anchorEl) {
+        const newTop = anchorEl.getBoundingClientRect().top - refs.list.getBoundingClientRect().top;
+        refs.list.scrollTop = refs.list.scrollTop + (newTop - anchorOffset);
+      } else {
+        refs.list.scrollTop = scrollTop;
+      }
+    }
+
     renderStatus();
   }
 
@@ -2598,6 +2631,7 @@
 
     const card = document.createElement("article");
     card.className = "tugou-card";
+    card.dataset.msgId = String(message.id);
     applySourceTheme(card, message.group_name);
     card.classList.toggle("is-hit", message.keywordHits.length > 0);
 
@@ -2741,6 +2775,7 @@
 
     const card = document.createElement("article");
     card.className = "tugou-card tugou-x-card";
+    card.dataset.msgId = String(message.id);
     applySourceTheme(card, message.group_name);
     card.classList.toggle("is-hit", message.keywordHits.length > 0);
 
@@ -3073,6 +3108,7 @@
 
     const card = document.createElement("article");
     card.className = "tugou-card tugou-x-card";
+    card.dataset.msgId = String(message.id);
     applySourceTheme(card, message.group_name);
 
     // Header
@@ -3155,6 +3191,7 @@
 
     const card = document.createElement("article");
     card.className = "tugou-card tugou-x-card";
+    card.dataset.msgId = String(message.id);
     applySourceTheme(card, message.group_name);
 
     // Header
