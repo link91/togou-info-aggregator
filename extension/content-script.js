@@ -2824,7 +2824,10 @@
     const tweetType = meta.tweet_type || "tweet";
     // extractCleanContent 提取 "推文内容:" 部分（引用推文时是发推人的评论），
     // meta.text 对于引用推文类型包含的是被引用内容，不是发推人的正文，所以优先用 extractCleanContent。
-    const tweetText = (message.content ? extractCleanContent(message.content) : null) || meta.text || "";
+    // 但对于回复类型，meta.text 是回复正文（来自 enrichment），更可靠。
+    const tweetText = tweetType === "reply"
+      ? (meta.text || (message.content ? extractCleanContent(message.content) : null) || "")
+      : ((message.content ? extractCleanContent(message.content) : null) || meta.text || "");
     const tweetUrl = meta.tweet_url || message.link_url || "";
     const avatarUrl = proxyAvatar(user.avatar
       || (handle ? `https://unavatar.io/twitter/${handle}` : ""))
@@ -3135,8 +3138,11 @@
     const quoteIdx = raw.indexOf("引用内容:");
     const replyIdx = raw.indexOf("回帖内容:");
     if (contentIdx >= 0) {
-      // 如果同时有引用内容，取推文内容到引用内容之间
-      const end = quoteIdx > contentIdx ? quoteIdx : raw.length;
+      // 如果同时有引用内容或回复上下文，取推文内容到它们之间
+      let end = raw.length;
+      if (quoteIdx > contentIdx) end = Math.min(end, quoteIdx);
+      const replyCtxIdx = raw.indexOf("回复上下文:");
+      if (replyCtxIdx > contentIdx) end = Math.min(end, replyCtxIdx);
       const text = raw.slice(contentIdx + "推文内容:".length, end).trim();
       if (text) return text;
     }
