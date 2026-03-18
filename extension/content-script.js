@@ -2567,6 +2567,7 @@
   }
 
   function renderMessages() {
+    const savedScrollTop = refs.list.scrollTop;
     refs.list.textContent = "";
     const visibleMessages = getVisibleMessages();
 
@@ -2582,6 +2583,7 @@
       fragment.appendChild(createMessageCard(message));
     }
     refs.list.appendChild(fragment);
+    refs.list.scrollTop = savedScrollTop;
     renderStatus();
   }
 
