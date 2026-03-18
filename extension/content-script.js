@@ -158,7 +158,9 @@
     wsFailCount: 0,
     heartbeatTimer: null,
     lastPongAt: Date.now(),
-    audioContext: null
+    audioContext: null,
+    _newMsgCount: 0,
+    _disconnectTimer: null
   };
 
   const refs = {};
@@ -611,6 +613,31 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      position: relative;
+    }
+
+    .tugou-new-msg-toast {
+      position: sticky;
+      top: 0;
+      align-self: center;
+      z-index: 100;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(37, 99, 235, 0.4);
+      transition: opacity 0.2s, transform 0.2s;
+      display: none;
+      margin-bottom: -10px;
+    }
+    .tugou-new-msg-toast:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.5);
+    }
     }
 
     .tugou-empty {
@@ -1500,6 +1527,10 @@
 
     const list = document.createElement("div");
     list.className = "tugou-list";
+    const newMsgToast = document.createElement("button");
+    newMsgToast.type = "button";
+    newMsgToast.className = "tugou-new-msg-toast";
+    list.appendChild(newMsgToast);
     const empty = document.createElement("div");
     empty.className = "tugou-empty";
     empty.textContent = "监控消息会在这里实时出现";
@@ -1595,6 +1626,7 @@
     refs.keywordList = keywordList;
     refs.list = list;
     refs.empty = empty;
+    refs.newMsgToast = newMsgToast;
     refs.resizeHandle = resizeHandle;
   }
 
@@ -1861,6 +1893,22 @@
       state.settings = normalizeSettings(state.settings);
       updatePanelPosition();
       await saveSettings();
+    });
+
+    // 新消息浮窗：滚动到顶部时清空计数
+    refs.list.addEventListener("scroll", () => {
+      if (refs.list.scrollTop <= 30) {
+        state._newMsgCount = 0;
+        refs.newMsgToast.style.display = "none";
+      }
+    });
+
+    // 点击浮窗回到顶部
+    refs.newMsgToast.addEventListener("click", (e) => {
+      e.stopPropagation();
+      refs.list.scrollTo({ top: 0, behavior: "smooth" });
+      state._newMsgCount = 0;
+      refs.newMsgToast.style.display = "none";
     });
   }
 
@@ -2354,6 +2402,15 @@
       incrementGroupUnread(message.group_name);
       maybeNotify(message);
       flashPanel();
+
+      // 用户滚动下方时，显示新消息浮窗
+      if (refs.list && refs.list.scrollTop > 30) {
+        state._newMsgCount = (state._newMsgCount || 0) + 1;
+        if (refs.newMsgToast) {
+          refs.newMsgToast.textContent = `↑ ${state._newMsgCount} 条新消息`;
+          refs.newMsgToast.style.display = "block";
+        }
+      }
     }
 
     renderAll();
@@ -2591,6 +2648,8 @@
     }
 
     refs.list.textContent = "";
+    // 重新插入新消息浮窗（textContent清空会移除它）
+    if (refs.newMsgToast) refs.list.appendChild(refs.newMsgToast);
     const visibleMessages = getVisibleMessages();
 
     if (!visibleMessages.length) {
